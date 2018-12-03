@@ -1,8 +1,8 @@
 from modsim import *
 
-init = State(cx=0,cy=0,cvx=1,cvy=0,b1x=1,b1y=0,b1vx=0,b1vy=0)
+init = State(cx=0,cy=0,cvx=1,cvy=0,b1x=1,b1y=.02,b1vx=0,b1vy=0)
 state = init
-system = System(init=init, f_force_mag=0.0166698, m=0.1701, r=0.028575, balls=1, dt=.05, t_0=0, t_end=20, minvel=.001)
+system = System(init=init, f_force_mag=0.0166698, m=0.1701, r=0.028575, balls=1, dt=.05, t_0=0, t_end=20, minvel=.01)
 
 def f_force(system, v_vector):
     unpack(system)
@@ -92,3 +92,7 @@ def run_sim(system, update_func):
     return frame
 
 results = run_sim(system, update_func)
+
+plot(results.cx, results.cy)
+plot(results.b1x, results.b1y)
+savefig('graphs\cue.png')

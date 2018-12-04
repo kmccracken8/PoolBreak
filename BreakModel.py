@@ -1,12 +1,15 @@
 from modsim import *
 
-init = State(cx=0,cy=0,cvx=1,cvy=0,b1x=1,b1y=.02,b1vx=0,b1vy=0)
+init = State(cx=0.5,cy=0,cvx=4,cvy=0,b1x=1.5,b1y=0.02,b1vx=0,b1vy=0)
 state = init
-system = System(init=init, f_force_mag=0.0166698, m=0.1701, r=0.028575, balls=1, dt=.05, t_0=0, t_end=20, minvel=.01)
+system = System(init=init, fs=0.0166698, fk=0.333396, m=0.1701, r=0.028575, balls=1, dt=.001, t_0=0, t_end=10, minvel=.01, h=1, w=2)
 
 def f_force(system, v_vector):
     unpack(system)
-    f_force_vector = v_vector.hat() * -f_force_mag
+    if v_vector.mag > 0.5:
+        f_force_vector = v_vector.hat() * -fk
+        return f_force_vector
+    f_force_vector = v_vector.hat() * -fs
     return f_force_vector
 
 def dist(v1, v2):
@@ -37,6 +40,19 @@ def update_func(state, t, system):
         pos_vectors.append(Vector(state[4*b],state[4*b+1]))
         vel_vectors.append(Vector(state[4*b+2],state[4*b+3]))
     checkdist = linrange(0,balls,1)
+
+    for b in ids:
+        bld = pos_vectors[b].x
+        brd = 2 - pos_vectors[b].x
+        bbd = 0.5 + pos_vectors[b].y
+        btd = 0.5 - pos_vectors[b].y
+        if bld <= r or brd <= r:
+            print('xbounce ' + str(b) +' - ' + str(t) + ' pos: ' + str(pos_vectors[b]) + ' ---- ' + str(bld) + ' ' + str(brd))
+            vel_vectors[b] = Vector(-vel_vectors[b].x, vel_vectors[b].y)
+        if bbd <= r or btd <=r:
+            print('ybounce ' + str(b) +' - ' + str(t) + ' pos: ' + str(pos_vectors[b]) + ' ---- ' + str(bbd) + ' ' + str(btd))
+            vel_vectors[b] = Vector(vel_vectors[b].x, -vel_vectors[b].y)
+
     for b1 in checkdist:
         if b1 == 0:
             collisions.append(0)
@@ -71,10 +87,6 @@ def update_func(state, t, system):
             vb = Vector(0,0)
         vs.append(vb)
         ps.append(pb)
-        print('ps' + str(b) + '--' + str(t+dt))
-        print(ps)
-        print('vs' + str(b) + '--' + str(t+dt))
-        print(vs)
 
     results = State(cx=ps[0].x,cy=ps[0].y,cvx=vs[0].x,cvy=vs[0].y,b1x=ps[1].x,b1y=ps[1].y,b1vx=vs[1].x,b1vy=vs[1].y)
     return results
@@ -95,4 +107,4 @@ results = run_sim(system, update_func)
 
 plot(results.cx, results.cy)
 plot(results.b1x, results.b1y)
-savefig('graphs\cue.png')
+savefig('graphs/balls.png')

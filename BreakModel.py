@@ -1,8 +1,8 @@
 from modsim import *
 
-init = State(cx=0.5,cy=0,cvx=4,cvy=0,b1x=1.5,b1y=0.02,b1vx=0,b1vy=0)
+init = State(cx=0.5,cy=.45,cvx=3.9,cvy=0,b1x=1.5,b1y=0.45,b1vx=0,b1vy=0)
 state = init
-system = System(init=init, fs=0.0166698, fk=0.333396, m=0.1701, r=0.028575, balls=1, dt=.001, t_0=0, t_end=10, minvel=.01, h=1, w=2)
+system = System(init=init, fs=0.0166698, fk=0.333396, m=0.1701, r=0.028575, balls=1, dist_step=1, t_0=0, t_end=10, minvel=.01, h=1, w=2)
 
 def f_force(system, v_vector):
     unpack(system)
@@ -30,6 +30,11 @@ def newv2(p1, p2, v1, v2):
 
 def update_func(state, t, system):
     unpack(system)
+    tlc = Vector(0,h/2)
+    blc = Vector(0,-h/2)
+    trc = Vector(w,h/2)
+    brc = Vector(w,-h/2)
+
     ids = linrange(0,balls,1,endpoint=True)
     pos_vectors = []
     vel_vectors = []
@@ -47,10 +52,10 @@ def update_func(state, t, system):
         bbd = 0.5 + pos_vectors[b].y
         btd = 0.5 - pos_vectors[b].y
         if bld <= r or brd <= r:
-            print('xbounce ' + str(b) +' - ' + str(t) + ' pos: ' + str(pos_vectors[b]) + ' ---- ' + str(bld) + ' ' + str(brd))
+            #print('xbounce ' + str(b) +' - ' + str(t) + ' pos: ' + str(pos_vectors[b]) + ' ---- ' + str(bld) + ' ' + str(brd))
             vel_vectors[b] = Vector(-vel_vectors[b].x, vel_vectors[b].y)
         if bbd <= r or btd <=r:
-            print('ybounce ' + str(b) +' - ' + str(t) + ' pos: ' + str(pos_vectors[b]) + ' ---- ' + str(bbd) + ' ' + str(btd))
+            #print('ybounce ' + str(b) +' - ' + str(t) + ' pos: ' + str(pos_vectors[b]) + ' ---- ' + str(bbd) + ' ' + str(btd))
             vel_vectors[b] = Vector(vel_vectors[b].x, -vel_vectors[b].y)
 
     for b1 in checkdist:
@@ -75,6 +80,10 @@ def update_func(state, t, system):
                     # do some shit here for when threee balllllls touch eachother
                     print('three ball collision')
                 print(str(b1) + ' and ' + str(b2) + ' collided')
+                print('1position-1: ' + str(pos_vectors[b1]))
+                print('1position-2: ' + str(pos_vectors[b2]))
+                dist_error = r - pos_vectors[b1].dist(pos_vectors[b2])
+                print('dist error ' + str(dist_error))
                 v1prime = newv1(pos_vectors[b1],pos_vectors[b2],vel_vectors[b1],vel_vectors[b2])
                 v2prime = newv2(pos_vectors[b1],pos_vectors[b2],vel_vectors[b1],vel_vectors[b2])
                 vel_vectors[b1] = v1prime
@@ -88,11 +97,19 @@ def update_func(state, t, system):
         vs.append(vb)
         ps.append(pb)
 
+    for b in ids:
+        if pos_vectors[b].dist(tlc) <= 2*r or pos_vectors[b].dist(blc) <= 2*r or pos_vectors[b].dist(trc) <= 2*r or pos_vectors[b].dist(brc) <= 2*r:
+            print('ball sunk')
+            ps[b] = Vector(2+b,2)
+            vs[b] = Vector(0,0)
+
     results = State(cx=ps[0].x,cy=ps[0].y,cvx=vs[0].x,cvy=vs[0].y,b1x=ps[1].x,b1y=ps[1].y,b1vx=vs[1].x,b1vy=vs[1].y)
     return results
 
 def run_sim(system, update_func):
+    system = System(system, dt = system.dist_step / (100* sqrt(state.cvx**2 + state.cvy**2)))
     unpack(system)
+    print(dt)
 
     frame = TimeFrame(columns=init.index)
     frame.loc[t_0] = init

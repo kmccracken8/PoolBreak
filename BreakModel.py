@@ -1,8 +1,8 @@
 from modsim import *
 
-init = State(cx=0.5,cy=.45,cvx=3.9,cvy=0,b1x=1.5,b1y=0.45,b1vx=0,b1vy=0)
+init = State(cx=0.5,cy=0,cvx=3.9,cvy=0, b1x=1.5,b1y=.02,b1vx=0,b1vy=0, b2x=1.55,b2y=-0.01,b2vx=0,b2vy=0)
 state = init
-system = System(init=init, fs=0.0166698, fk=0.333396, m=0.1701, r=0.028575, balls=1, dist_step=1, t_0=0, t_end=10, minvel=.01, h=1, w=2)
+system = System(init = init, fs=0.0166698, fk=0.333396, m=0.1701, r=0.028575, balls=2, dist_step=2, t_0=0, t_end=10, minvel=.01, h=1, w=2, t_cut=1)
 
 def f_force(system, v_vector):
     unpack(system)
@@ -52,10 +52,8 @@ def update_func(state, t, system):
         bbd = 0.5 + pos_vectors[b].y
         btd = 0.5 - pos_vectors[b].y
         if bld <= r or brd <= r:
-            #print('xbounce ' + str(b) +' - ' + str(t) + ' pos: ' + str(pos_vectors[b]) + ' ---- ' + str(bld) + ' ' + str(brd))
             vel_vectors[b] = Vector(-vel_vectors[b].x, vel_vectors[b].y)
         if bbd <= r or btd <=r:
-            #print('ybounce ' + str(b) +' - ' + str(t) + ' pos: ' + str(pos_vectors[b]) + ' ---- ' + str(bbd) + ' ' + str(btd))
             vel_vectors[b] = Vector(vel_vectors[b].x, -vel_vectors[b].y)
 
     for b1 in checkdist:
@@ -100,28 +98,58 @@ def update_func(state, t, system):
     for b in ids:
         if pos_vectors[b].dist(tlc) <= 2*r or pos_vectors[b].dist(blc) <= 2*r or pos_vectors[b].dist(trc) <= 2*r or pos_vectors[b].dist(brc) <= 2*r:
             print('ball sunk')
+            system.score += 1
             ps[b] = Vector(2+b,2)
             vs[b] = Vector(0,0)
 
-    results = State(cx=ps[0].x,cy=ps[0].y,cvx=vs[0].x,cvy=vs[0].y,b1x=ps[1].x,b1y=ps[1].y,b1vx=vs[1].x,b1vy=vs[1].y)
+    results = State(cx=ps[0].x,cy=ps[0].y,cvx=vs[0].x,cvy=vs[0].y, b1x=ps[1].x,b1y=ps[1].y,b1vx=vs[1].x,b1vy=vs[1].y, b2x=ps[2].x,b2y=ps[2].y,b2vx=vs[2].x,b2vy=vs[2].y)
+
     return results
 
 def run_sim(system, update_func):
-    system = System(system, dt = system.dist_step / (100* sqrt(state.cvx**2 + state.cvy**2)))
+    system = System(system, dt = system.dist_step / (100* sqrt(state.cvx**2 + state.cvy**2)), score=0)
     unpack(system)
-    print(dt)
 
     frame = TimeFrame(columns=init.index)
     frame.loc[t_0] = init
-    ts = linrange(t_0,t_end,dt)
+    ts = linrange(t_0, t_end, dt)
 
     for t in ts:
         frame.row[t+dt] = update_func(frame.row[t], t, system)
 
-    return frame
+    return frame, score
 
-results = run_sim(system, update_func)
+def sweep_sim(init,state,system,update_func, sweep_y, sweep_v):
+    unpack(system)
+    columnlabels = ['y','v','score']
+    outcome = DataFrame(index=sweep_y, columns=sweep_v)
+    for ystart in sweep_y:
+        print('ystart')
+        print(ystart)
+        init.cy = ystart
 
-plot(results.cx, results.cy)
-plot(results.b1x, results.b1y)
-savefig('graphs/balls.png')
+        for vstart in sweep_v:
+            init.cvx = vstart
+            state = init
+            system.init = init
+            print('vstart')
+            print(vstart)
+            results, score = run_sim(system, update_func)
+            plt.figure(10*vstart+ystart)
+            plot(results.cx, results.cy)
+            plot(results.b1x, results.b1y)
+            plot(results.b2x, results.b2y)
+            savefig('graphs/balls----y'+str(ystart)+'----v'+str(vstart) + '--.png')
+            outcome.set_value(ystart, vstart, score)
+
+    return outcome
+
+sweep_y = linspace(-.4,.4,3, endpoint=True)
+sweep_v = linspace(1,20,3, endpoint=True)
+
+print(sweep_y)
+print(sweep_v)
+
+results = sweep_sim(init,state,system,update_func,sweep_y,sweep_v)
+
+print(results)
